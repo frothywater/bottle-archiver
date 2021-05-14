@@ -1,0 +1,12 @@
+{
+  "overrides": [
+    {
+      "files": ["*.ts"],
+      "options": {
+        "semi": false,
+        "tabWidth": 4,
+        "trailingComma": "es5"
+      }
+    }
+  ]
+}
