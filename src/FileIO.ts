@@ -1,9 +1,8 @@
 import fs from "fs"
-import pathModule from "path"
 
 export default class FileIO {
     static writeObject<T>(object: T, path: string): void {
-        fs.writeFileSync(path, JSON.stringify(object))
+        fs.writeFileSync(path, JSON.stringify(object, null, 2))
     }
 
     static readObject<T>(path: string): T {
@@ -21,22 +20,5 @@ export default class FileIO {
         } catch {
             return false
         }
-    }
-
-    static getFilePath(path: string, filename: string): string {
-        return pathModule.join(path, filename)
-    }
-
-    static getFilePathWithDate(path: string, filename: string): string {
-        const [mainName, extension] = filename.split(".")
-        const dateString = new Date()
-            .toLocaleDateString("zh-CN", {
-                year: "numeric",
-                month: "2-digit",
-                day: "2-digit",
-            })
-            .split("/")
-            .join("-")
-        return pathModule.join(path, `${mainName}_${dateString}.${extension}`)
     }
 }

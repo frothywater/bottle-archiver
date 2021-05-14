@@ -17,53 +17,34 @@ export default class Twitter {
 
     async updateFavorites(): Promise<void> {
         const tweets = await this.fetchFavorites()
-        Database.updateTwitter(tweets, this.parseTweets(tweets))
+
+        const oldTweets: Tweet[] = Database.getTweets() ?? []
+
+        console.log(`Update Twitter favorites:`)
+        console.log(`${oldTweets.length} before, ${tweets.length} from API,`)
+
+        const mergedTweets = Twitter.mergeTweets(oldTweets, tweets)
+        Database.updateTwitter(mergedTweets, Twitter.parseTweets(mergedTweets))
+        console.log(`${mergedTweets.length} in total now.`)
     }
 
-    async updateFavoritesFromHar(): Promise<void> {
+    static async updateFavoritesFromHar(): Promise<void> {
         if (!FileIO.existFile(Const.twitterFavoritesHarPath)) return
         const tweetsFromHar: Tweet[] = FileIO.readObject(
             Const.twitterFavoritesHarPath
         )
 
-        const tweets: Tweet[] | undefined = Database.getLastRetrievedTwitter()
-        if (!tweets) return
+        const tweets: Tweet[] = Database.getTweets() ?? []
 
         console.log(`Update Twitter favorites from HAR file:`)
         console.log(
-            `\t${tweets.length} before, ${tweetsFromHar.length} in HAR file,`
+            `${tweets.length} before, ${tweetsFromHar.length} in HAR file,`
         )
 
-        const tweetSet = new Set<string>()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        tweets.forEach((tweet: any) => tweetSet.add(tweet.id_str))
-        tweetsFromHar.forEach((tweet) => {
-            if (!tweetSet.has(tweet.id_str)) {
-                tweetSet.add(tweet.id_str)
-                tweets.push(tweet)
-            }
-        })
+        const mergedTweets = this.mergeTweets(tweets, tweetsFromHar)
 
-        console.log(`${tweets.length} in total after merged.`)
-        Database.updateTwitter(tweets, this.parseTweets(tweets))
-    }
-
-    private parseTweets(tweets: Tweet[]): FileDictionary {
-        const result: FileDictionary = {}
-
-        tweets.forEach((tweet) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const mediaArray: any[] = tweet.extended_entities?.media
-            if (!mediaArray) return
-            mediaArray.forEach((media) => {
-                const url: string = media.media_url_https
-                const filename = url.split("/").pop()
-                if (!filename) return
-                result[filename] = { id: tweet.id_str, url }
-            })
-        })
-
-        return result
+        Database.updateTwitter(mergedTweets, this.parseTweets(mergedTweets))
+        console.log(`${mergedTweets.length} in total after merged.`)
     }
 
     private async fetchFavorites(): Promise<Tweet[]> {
@@ -102,6 +83,38 @@ export default class Twitter {
         console.log(
             `\tgot ${result.length} results, last created at ${last?.created_at}, id=${last?.id_str}`
         )
+
+        return result
+    }
+
+    private static mergeTweets(tweetsA: Tweet[], tweetsB: Tweet[]): Tweet[] {
+        const result: Tweet[] = tweetsA
+        const tweetSet = new Set<string>()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tweetsA.forEach((tweet: any) => tweetSet.add(tweet.id_str))
+        tweetsB.forEach((tweet) => {
+            if (!tweetSet.has(tweet.id_str)) {
+                tweetSet.add(tweet.id_str)
+                result.push(tweet)
+            }
+        })
+        return result
+    }
+
+    private static parseTweets(tweets: Tweet[]): FileDictionary {
+        const result: FileDictionary = {}
+
+        tweets.forEach((tweet) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const mediaArray: any[] = tweet.extended_entities?.media
+            if (!mediaArray) return
+            mediaArray.forEach((media) => {
+                const url: string = media.media_url_https
+                const filename = url.split("/").pop()
+                if (!filename) return
+                result[filename] = { id: tweet.id_str, url }
+            })
+        })
 
         return result
     }
