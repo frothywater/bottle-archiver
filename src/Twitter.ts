@@ -29,10 +29,8 @@ export default class Twitter {
     }
 
     static async updateFavoritesFromHar(): Promise<void> {
-        if (!FileIO.existFile(Const.twitterFavoritesHarPath)) return
-        const tweetsFromHar: Tweet[] = FileIO.readObject(
-            Const.twitterFavoritesHarPath
-        )
+        if (!FileIO.existFile(Const.tweetsHarPath)) return
+        const tweetsFromHar: Tweet[] = FileIO.readObject(Const.tweetsHarPath)
 
         const tweets: Tweet[] = Database.getTweets() ?? []
 
@@ -111,8 +109,7 @@ export default class Twitter {
             mediaArray.forEach((media) => {
                 const url: string = media.media_url_https
                 const filename = url.split("/").pop()
-                if (!filename) return
-                result[filename] = { id: tweet.id_str, url }
+                if (filename) result[filename] = { id: tweet.id_str, url }
             })
         })
 

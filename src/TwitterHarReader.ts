@@ -22,7 +22,7 @@ export default class TwitterHarReader {
                     }
                 })
             })
-        FileIO.writeObject(result, Const.twitterFavoritesHarPath)
+        FileIO.writeObject(result, Const.tweetsHarPath)
     }
 
     private static parseResponse(text: string): any[] {
