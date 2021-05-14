@@ -22,12 +22,12 @@ export default class Database {
             }
         }
 
-        metadata.twitter.collectionIndex = this.getCollectionIndex(
+        metadata.twitter.collectionIndex = this.buildCollectionIndex(
             Const.twitterImageDirectory,
             metadata.twitter.collectionIndex
         )
 
-        metadata.pixiv.collectionIndex = this.getCollectionIndex(
+        metadata.pixiv.collectionIndex = this.buildCollectionIndex(
             Const.pixivImageDirectory,
             metadata.pixiv.collectionIndex
         )
@@ -35,7 +35,55 @@ export default class Database {
         FileIO.writeObject(metadata, Const.metadataPath)
     }
 
-    static updateCollectionIndex(
+    static updateTwitter<T>(data: T, dict: FileDictionary): void {
+        this.update("twitter", data, dict)
+    }
+
+    static updatePixiv<T>(data: T, dict: FileDictionary): void {
+        this.update("pixiv", data, dict)
+    }
+
+    static getLastRetrievedTwitter<T>(): T | undefined {
+        return this.getLastRetrieved<T>("twitter")
+    }
+
+    static getLastRetrievedPixiv<T>(): T | undefined {
+        return this.getLastRetrieved<T>("pixiv")
+    }
+
+    private static update<T>(
+        type: "twitter" | "pixiv",
+        data: T,
+        dict: FileDictionary
+    ): void {
+        const filename =
+            type == "twitter"
+                ? Const.twitterFavoritesFileName
+                : Const.pixivFavoritesFileName
+        const filePath = FileIO.getFilePathWithDate(
+            Const.dataDirectory,
+            filename
+        )
+        FileIO.writeObject(data, filePath)
+
+        const metadata = FileIO.readObject<Metadata>(Const.metadataPath)
+        metadata[type].lastRetrieved = { filePath: filePath, date: new Date() }
+        FileIO.writeObject(metadata, Const.metadataPath)
+
+        this.updateCollectionIndex(type, dict)
+    }
+
+    private static getLastRetrieved<T>(
+        type: "twitter" | "pixiv"
+    ): T | undefined {
+        const metadata = FileIO.readObject<Metadata>(Const.metadataPath)
+        const filePath = metadata[type].lastRetrieved?.filePath
+        if (!filePath) return undefined
+        if (!FileIO.existFile(filePath)) return undefined
+        return FileIO.readObject(filePath)
+    }
+
+    private static updateCollectionIndex(
         type: "twitter" | "pixiv",
         dict: FileDictionary
     ): void {
@@ -58,16 +106,7 @@ export default class Database {
         FileIO.writeObject(metadata, Const.metadataPath)
     }
 
-    static updateLastRetrieved(
-        type: "twitter" | "pixiv",
-        filename: string
-    ): void {
-        const metadata = FileIO.readObject<Metadata>(Const.metadataPath)
-        metadata[type].lastRetrieved = { filename, date: new Date() }
-        FileIO.writeObject(metadata, Const.metadataPath)
-    }
-
-    private static getCollectionIndex(
+    private static buildCollectionIndex(
         path: string,
         oldIndex: CollectionIndex
     ): CollectionIndex {

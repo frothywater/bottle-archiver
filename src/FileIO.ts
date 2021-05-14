@@ -24,6 +24,10 @@ export default class FileIO {
     }
 
     static getFilePath(path: string, filename: string): string {
+        return pathModule.join(path, filename)
+    }
+
+    static getFilePathWithDate(path: string, filename: string): string {
         const [mainName, extension] = filename.split(".")
         const dateString = new Date()
             .toLocaleDateString("zh-CN", {

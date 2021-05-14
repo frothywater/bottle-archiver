@@ -10,7 +10,7 @@ export interface Metadata {
 }
 
 export interface LastRetrievedInfo {
-    filename: string
+    filePath: string
     date: Date
 }
 

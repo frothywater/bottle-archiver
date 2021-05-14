@@ -5,7 +5,7 @@ import Database from "./Database"
 import FileIO from "./FileIO"
 import { FileDictionary } from "./typing/FileDictionary"
 
-type TweetArray = TwitterClient.ResponseData[]
+type Tweet = TwitterClient.ResponseData
 
 export default class Twitter {
     client = new TwitterClient(token)
@@ -17,18 +17,38 @@ export default class Twitter {
 
     async updateFavorites(): Promise<void> {
         const tweets = await this.fetchFavorites()
-
-        const filePath = FileIO.getFilePath(
-            Const.dataDirectory,
-            Const.twitterFavoritesFileName
-        )
-        FileIO.writeObject(tweets, filePath)
-        Database.updateLastRetrieved("twitter", filePath)
-
-        Database.updateCollectionIndex("twitter", this.parseTweets(tweets))
+        Database.updateTwitter(tweets, this.parseTweets(tweets))
     }
 
-    private parseTweets(tweets: TweetArray): FileDictionary {
+    async updateFavoritesFromHar(): Promise<void> {
+        if (!FileIO.existFile(Const.twitterFavoritesHarPath)) return
+        const tweetsFromHar: Tweet[] = FileIO.readObject(
+            Const.twitterFavoritesHarPath
+        )
+
+        const tweets: Tweet[] | undefined = Database.getLastRetrievedTwitter()
+        if (!tweets) return
+
+        console.log(`Update Twitter favorites from HAR file:`)
+        console.log(
+            `\t${tweets.length} before, ${tweetsFromHar.length} in HAR file,`
+        )
+
+        const tweetSet = new Set<string>()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tweets.forEach((tweet: any) => tweetSet.add(tweet.id_str))
+        tweetsFromHar.forEach((tweet) => {
+            if (!tweetSet.has(tweet.id_str)) {
+                tweetSet.add(tweet.id_str)
+                tweets.push(tweet)
+            }
+        })
+
+        console.log(`${tweets.length} in total after merged.`)
+        Database.updateTwitter(tweets, this.parseTweets(tweets))
+    }
+
+    private parseTweets(tweets: Tweet[]): FileDictionary {
         const result: FileDictionary = {}
 
         tweets.forEach((tweet) => {
@@ -46,11 +66,11 @@ export default class Twitter {
         return result
     }
 
-    private async fetchFavorites(): Promise<TweetArray> {
-        let result: TweetArray = []
+    private async fetchFavorites(): Promise<Tweet[]> {
+        let result: Tweet[] = []
 
         let maxID: bigint | undefined
-        let partialResult: TweetArray
+        let partialResult: Tweet[]
         do {
             partialResult = await this.fetchFavoritesOnce(maxID)
             result = result.concat(partialResult)
@@ -67,7 +87,7 @@ export default class Twitter {
         return result
     }
 
-    private async fetchFavoritesOnce(maxID?: bigint): Promise<TweetArray> {
+    private async fetchFavoritesOnce(maxID?: bigint): Promise<Tweet[]> {
         console.log(`Twitter: Fetching favorites, maxID=${maxID}`)
 
         const result = (await this.client.get("favorites/list", {
@@ -75,7 +95,7 @@ export default class Twitter {
             max_id: maxID ? maxID.toString() : undefined,
             count: 200,
             include_entities: true,
-        })) as TweetArray
+        })) as Tweet[]
 
         const last = result[result.length - 1]
 
