@@ -1,25 +1,18 @@
-import PixivClient, { PixivIllust } from "pixiv.ts"
+import PixivAppApi from "pixiv-app-api"
+import { PixivIllust } from "pixiv-app-api/dist/PixivTypes"
 import token from "../secret/pixiv_token.json"
-import Const from "./Const"
 import Database from "./Database"
-import FileIO from "./FileIO"
 import { FileDictionary } from "./typing/FileDictionary"
 
 export default class Pixiv {
-    client?: PixivClient
-    userID = token.id
+    client = new PixivAppApi("", "", {
+        camelcaseKeys: true,
+    })
+    userID?: number
 
     async init(): Promise<void> {
-        try {
-            this.client = await PixivClient.refreshLogin(token.refreshToken)
-
-            const newToken = token
-            newToken.accessToken = PixivClient.accessToken
-            newToken.refreshToken = PixivClient.refreshToken
-            FileIO.writeObject(newToken, Const.pixivTokenPath)
-        } catch (error) {
-            console.error(error)
-        }
+        this.client.authToken = token.accessToken
+        this.client.refreshToken = token.refreshToken
     }
 
     async updateFavorites(): Promise<void> {
@@ -36,41 +29,30 @@ export default class Pixiv {
     }
 
     private async fetchBookmarks(): Promise<PixivIllust[]> {
-        const publicResult = await this.fetchBookmarksWithRestrict("public")
-        const privateResult = await this.fetchBookmarksWithRestrict("private")
-        return publicResult.concat(privateResult)
+        return (await this.fetchBookmarksWithRestrict("private")).concat(
+            await this.fetchBookmarksWithRestrict("public")
+        )
     }
 
     private async fetchBookmarksWithRestrict(
         restrict: "private" | "public"
     ): Promise<PixivIllust[]> {
-        if (!this.client) throw console.error("Pixiv didn't login!")
+        if (!this.userID) throw console.error("Pixiv didn't login!")
 
         let result: PixivIllust[] = []
-        let nextURL: string | null = null
         do {
             console.log(`Pixiv: Fetching bookmarks`)
 
-            let partialResult: PixivIllust[]
-            if (nextURL) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const search: any = await this.client.api.next(nextURL)
-                partialResult = search.illusts
-                nextURL = search.nextURL
-            } else {
-                partialResult = await this.client.user.bookmarksIllust({
-                    user_id: this.userID,
-                    restrict,
-                })
-                nextURL = this.client.user.nextURL
-            }
-            result = result.concat(partialResult)
+            const search = await this.client.userBookmarksIllust(this.userID, {
+                restrict,
+            })
+            result = result.concat(search.illusts)
 
-            const last = partialResult[partialResult.length - 1]
+            const last = search.illusts[search.illusts.length - 1]
             console.log(
-                `\tgot ${partialResult.length} results, last created at ${last?.create_date}, id=${last?.id}`
+                `\tgot ${search.illusts.length} results, last created at ${last?.createDate}, id=${last?.id}`
             )
-        } while (nextURL)
+        } while (this.client.hasNext())
         return result
     }
 
@@ -78,10 +60,10 @@ export default class Pixiv {
         const result: FileDictionary = {}
 
         illusts.forEach((illust) => {
-            const singleUrl = illust.meta_single_page.original_image_url
+            const singleUrl = illust.metaSinglePage.originalImageUrl
             const urls = singleUrl
                 ? [singleUrl]
-                : illust.meta_pages.map((page) => page.image_urls.original)
+                : illust.metaPages.map((page) => page.imageUrls.original)
             urls.forEach((url) => {
                 const filename = url.split("/").pop()
                 if (filename)
