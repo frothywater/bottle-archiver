@@ -1,10 +1,14 @@
+import path from "path"
 import PixivAppApi from "pixiv-app-api"
-import { PixivIllust, PixivIllustSearch } from "pixiv-app-api/dist/PixivTypes"
+import { PixivIllustSearch } from "pixiv-app-api/dist/PixivTypes"
 import token from "../secret/pixiv_token.json"
 import Const from "./Const"
 import Database from "./Database"
+import { DownloadTask } from "./Downloader"
 import FileIO from "./FileIO"
+import { Illust } from "./typing/BasicType"
 import { FileDictionary } from "./typing/FileDictionary"
+import { FileState } from "./typing/Metadata"
 import Util from "./Util"
 
 export default class Pixiv {
@@ -24,7 +28,7 @@ export default class Pixiv {
     async updateFavorites(): Promise<void> {
         const illusts = await this.fetchBookmarks()
 
-        const oldIllusts: PixivIllust[] = (await Database.getPixiv()) ?? []
+        const oldIllusts: Illust[] = (await Database.getPixiv()) ?? []
 
         console.log(`Update Pixiv favorites:`)
         console.log(`${oldIllusts.length} before, ${illusts.length} from API,`)
@@ -37,6 +41,32 @@ export default class Pixiv {
         console.log(`${mergedIllusts.length} in total now.`)
     }
 
+    static async updateCollectionIndexFromData(): Promise<void> {
+        const illusts: Illust[] = (await Database.getPixiv()) ?? []
+        await Database.updatePixiv(illusts, this.parseIllusts(illusts))
+    }
+
+    static async getNotDownloadedTask(): Promise<DownloadTask[]> {
+        const index = await Database.getPixivIndex()
+
+        return (
+            Object.entries(index)
+                .filter((entry) => entry[1].state == FileState.notDownloaded)
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                .map((entry) => parseUrl(entry[1].info!.url))
+        )
+
+        function parseUrl(url: string): DownloadTask {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const filename = Util.extractFilename(url)!
+            return {
+                url,
+                path: path.join(Const.pixivImageDirectory, filename),
+                headers: { Referer: "http://www.pixiv.net/" },
+            }
+        }
+    }
+
     private async updateToken(): Promise<void> {
         const newToken: typeof token = {
             accessToken: this.client.authToken,
@@ -45,7 +75,7 @@ export default class Pixiv {
         await FileIO.writeObject(newToken, Const.pixivTokenPath)
     }
 
-    private async fetchBookmarks(): Promise<PixivIllust[]> {
+    private async fetchBookmarks(): Promise<Illust[]> {
         const privateResult = await this.fetchBookmarksWithRestrict("private")
         const publicResult = await this.fetchBookmarksWithRestrict("public")
         return privateResult.concat(publicResult)
@@ -53,10 +83,10 @@ export default class Pixiv {
 
     private async fetchBookmarksWithRestrict(
         restrict: "private" | "public"
-    ): Promise<PixivIllust[]> {
+    ): Promise<Illust[]> {
         if (!this.userID) throw console.error("Pixiv didn't login!")
 
-        const result: PixivIllust[] = []
+        const result: Illust[] = []
         let search: PixivIllustSearch | undefined
         do {
             console.log(`Pixiv: Fetching ${restrict} bookmarks`)
@@ -76,7 +106,7 @@ export default class Pixiv {
         return result
     }
 
-    private static parseIllusts(illusts: PixivIllust[]): FileDictionary {
+    private static parseIllusts(illusts: Illust[]): FileDictionary {
         const result: FileDictionary = {}
 
         illusts.forEach((illust) => {
@@ -98,10 +128,10 @@ export default class Pixiv {
     }
 
     private static mergeIllusts(
-        illustsA: PixivIllust[],
-        illustsB: PixivIllust[]
-    ): PixivIllust[] {
-        const result: PixivIllust[] = illustsA
+        illustsA: Illust[],
+        illustsB: Illust[]
+    ): Illust[] {
+        const result: Illust[] = illustsA
         const illustSet = new Set<number>()
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         illustsA.forEach((illust: any) => illustSet.add(illust.id_str))

@@ -1,6 +1,5 @@
 import Const from "./Const"
 import FileIO from "./FileIO"
-import { CollectionIndexInfo } from "./typing/CollectionIndexInfo"
 import { FileDictionary } from "./typing/FileDictionary"
 import { CollectionIndex, FileState, Metadata } from "./typing/Metadata"
 import Util from "./Util"
@@ -67,16 +66,7 @@ export default class Database {
         await FileIO.writeObject(metadata, Const.metadataPath)
         console.log(`${Util.toUpperLowerCase(type)}'s data file is updated.`)
 
-        const info = await this.updateCollectionIndex(type, dict)
-        console.log(
-            `${Util.toUpperLowerCase(type)}'s collection index is updated:`
-        )
-        console.log(
-            `\t${info.tracedCount} traced, ${info.notDownloadedCount} traced but not downloaded, ${info.untracedCount} untraced, `
-        )
-        console.log(
-            `\t${info.metadataCount} metadata, ${info.fileCount} files, ${info.total} record in total.`
-        )
+        await this.updateCollectionIndex(type, dict)
     }
 
     private static async getData<T>(
@@ -98,8 +88,8 @@ export default class Database {
     private static async updateCollectionIndex(
         type: "twitter" | "pixiv",
         dict: FileDictionary
-    ): Promise<CollectionIndexInfo> {
-        const metadata = await FileIO.readObject<Metadata>(Const.metadataPath)
+    ): Promise<void> {
+        const metadata: Metadata = await FileIO.readObject(Const.metadataPath)
         const index = metadata[type].collectionIndex
 
         Object.keys(dict).forEach((filename) => {
@@ -116,32 +106,7 @@ export default class Database {
         })
 
         await FileIO.writeObject(metadata, Const.metadataPath)
-
-        // Collect numbers of files of each state
-        let tracedCount = 0
-        let notDownloadedCount = 0
-        let untracedCount = 0
-        Object.entries(index).forEach((entry) => {
-            switch (entry[1].state) {
-                case FileState.traced:
-                    tracedCount++
-                    break
-                case FileState.notDownloaded:
-                    notDownloadedCount++
-                    break
-                case FileState.untraced:
-                    untracedCount++
-                    break
-            }
-        })
-        return {
-            tracedCount,
-            notDownloadedCount,
-            untracedCount,
-            fileCount: tracedCount + untracedCount,
-            metadataCount: tracedCount + notDownloadedCount,
-            total: tracedCount + notDownloadedCount + untracedCount,
-        }
+        await this.logCollectionIndexInfo(type)
     }
 
     private static async rebuildCollectionIndex(
@@ -149,13 +114,13 @@ export default class Database {
     ): Promise<void> {
         const metadata: Metadata = await FileIO.readObject(Const.metadataPath)
         metadata[type].collectionIndex = this.lookupAndMergeCollectionIndex(
-            Const.twitterImageDirectory,
-            metadata.twitter.collectionIndex
-        )
-        console.log(
-            `${Util.toUpperLowerCase(type)}'s collection index is updated.`
+            type == "twitter"
+                ? Const.twitterImageDirectory
+                : Const.pixivImageDirectory,
+            metadata[type].collectionIndex
         )
         await FileIO.writeObject(metadata, Const.metadataPath)
+        await this.logCollectionIndexInfo(type)
     }
 
     private static lookupAndMergeCollectionIndex(
@@ -172,12 +137,13 @@ export default class Database {
                     state: FileState.traced,
                     info: oldIndex[filename].info,
                 }
+            else newIndex[filename] = oldIndex[filename]
         })
         // Look at old index
         Object.keys(oldIndex).forEach((filename) => {
             if (
                 !newIndex[filename] &&
-                oldIndex[filename].state == FileState.traced
+                oldIndex[filename].state != FileState.untraced
             )
                 newIndex[filename] = {
                     state: FileState.notDownloaded,
@@ -185,5 +151,41 @@ export default class Database {
                 }
         })
         return newIndex
+    }
+
+    private static async logCollectionIndexInfo(
+        type: "twitter" | "pixiv"
+    ): Promise<void> {
+        const metadata: Metadata = await FileIO.readObject(Const.metadataPath)
+        const index = metadata[type].collectionIndex
+        let tracedCount = 0
+        let notDownloadedCount = 0
+        let untracedCount = 0
+        Object.entries(index).forEach((entry) => {
+            switch (entry[1].state) {
+                case FileState.traced:
+                    tracedCount++
+                    break
+                case FileState.notDownloaded:
+                    notDownloadedCount++
+                    break
+                case FileState.untraced:
+                    untracedCount++
+                    break
+            }
+        })
+        console.log(
+            `${Util.toUpperLowerCase(type)}'s collection index is updated:`
+        )
+        console.log(
+            `\t${tracedCount} traced, ${notDownloadedCount} traced but not downloaded, ${untracedCount} untraced, `
+        )
+        console.log(
+            `\t${tracedCount + notDownloadedCount} metadata, ${
+                tracedCount + untracedCount
+            } files, ${
+                tracedCount + notDownloadedCount + untracedCount
+            } record in total.`
+        )
     }
 }

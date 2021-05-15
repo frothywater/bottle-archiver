@@ -1,10 +1,10 @@
 export interface Metadata {
     twitter: {
-        lastRetrieved: LastRetrievedInfo | undefined
+        lastRetrieved?: LastRetrievedInfo
         collectionIndex: CollectionIndex
     }
     pixiv: {
-        lastRetrieved: LastRetrievedInfo | undefined
+        lastRetrieved?: LastRetrievedInfo
         collectionIndex: CollectionIndex
     }
 }
@@ -16,7 +16,7 @@ export interface LastRetrievedInfo {
 export interface CollectionIndex {
     [filename: string]: {
         state: FileState
-        info: FileInfo | undefined
+        info?: FileInfo
     }
 }
 
