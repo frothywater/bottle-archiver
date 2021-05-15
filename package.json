@@ -17,7 +17,9 @@
     "ts-node": "^9.1.1"
   },
   "dependencies": {
+    "axios": "^0.21.1",
     "pixiv-app-api": "file:../pixiv-app-api",
+    "queue": "^6.0.2",
     "socks-proxy-agent": "^5.0.0",
     "twitter": "^1.7.1"
   }
