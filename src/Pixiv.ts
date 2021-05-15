@@ -1,7 +1,9 @@
 import PixivAppApi from "pixiv-app-api"
 import { PixivIllust, PixivIllustSearch } from "pixiv-app-api/dist/PixivTypes"
 import token from "../secret/pixiv_token.json"
+import Const from "./Const"
 import Database from "./Database"
+import FileIO from "./FileIO"
 import { FileDictionary } from "./typing/FileDictionary"
 
 export default class Pixiv {
@@ -14,6 +16,8 @@ export default class Pixiv {
         this.client.refreshToken = token.refreshToken
         const loginResult = await this.client.login()
         this.userID = parseInt(loginResult.user.id, 10)
+
+        this.updateToken()
     }
 
     async updateFavorites(): Promise<void> {
@@ -27,6 +31,14 @@ export default class Pixiv {
         const mergedIllusts = Pixiv.mergeIllusts(oldIllusts, illusts)
         Database.updatePixiv(mergedIllusts, Pixiv.parseIllusts(mergedIllusts))
         console.log(`${mergedIllusts.length} in total now.`)
+    }
+
+    private updateToken(): void {
+        const newToken: typeof token = {
+            accessToken: this.client.authToken,
+            refreshToken: this.client.refreshToken,
+        }
+        FileIO.writeObject(newToken, Const.pixivTokenPath)
     }
 
     private async fetchBookmarks(): Promise<PixivIllust[]> {
