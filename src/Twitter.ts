@@ -4,12 +4,13 @@ import Const from "./Const"
 import Database from "./Database"
 import FileIO from "./FileIO"
 import { FileDictionary } from "./typing/FileDictionary"
+import Util from "./Util"
 
 type Tweet = TwitterClient.ResponseData
 
 export default class Twitter {
-    client = new TwitterClient(token)
-    username: string | undefined
+    private client = new TwitterClient(token)
+    private username: string | undefined
 
     constructor(username?: string) {
         this.username = username
@@ -116,7 +117,7 @@ export default class Twitter {
             if (!mediaArray) return
             mediaArray.forEach((media) => {
                 const url: string = media.media_url_https
-                const filename = url.split("/").pop()
+                const filename = Util.extractFilename(url)
                 if (filename) result[filename] = { id: tweet.id_str, url }
             })
         })

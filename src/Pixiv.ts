@@ -5,12 +5,13 @@ import Const from "./Const"
 import Database from "./Database"
 import FileIO from "./FileIO"
 import { FileDictionary } from "./typing/FileDictionary"
+import Util from "./Util"
 
 export default class Pixiv {
-    client = new PixivAppApi("", "", {
+    private client = new PixivAppApi("", "", {
         camelcaseKeys: true,
     })
-    userID?: number
+    private userID?: number
 
     async init(): Promise<void> {
         this.client.refreshToken = token.refreshToken
@@ -87,7 +88,7 @@ export default class Pixiv {
                     ...illust.metaPages.map((page) => page.imageUrls.original)
                 )
             urls.forEach((url) => {
-                const filename = url.split("/").pop()
+                const filename = Util.extractFilename(url)
                 if (filename)
                     result[filename] = { id: illust.id.toString(), url }
             })
