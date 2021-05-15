@@ -7,48 +7,16 @@ import Util from "./Util"
 
 export default class Database {
     static async init(): Promise<void> {
-        let metadata: Metadata
-
-        if (FileIO.existFile(Const.metadataPath))
-            metadata = await FileIO.readObject(Const.metadataPath)
-        else {
+        if (!FileIO.existFile(Const.metadataPath)) {
             console.log("Metadata doesn't exist, create empty metadata file.")
-            metadata = {
-                twitter: {
-                    lastRetrieved: undefined,
-                    collectionIndex: {},
-                },
-                pixiv: {
-                    lastRetrieved: undefined,
-                    collectionIndex: {},
-                },
+            const metadata: Metadata = {
+                twitter: { collectionIndex: {} },
+                pixiv: { collectionIndex: {} },
             }
+            await FileIO.writeObject(metadata, Const.metadataPath)
         }
-
-        metadata.twitter.collectionIndex = this.buildCollectionIndex(
-            Const.twitterImageDirectory,
-            metadata.twitter.collectionIndex
-        )
-        console.log("Twitter's collection index is updated.")
-
-        metadata.pixiv.collectionIndex = this.buildCollectionIndex(
-            Const.pixivImageDirectory,
-            metadata.pixiv.collectionIndex
-        )
-        console.log("Pixiv's collection index is updated.")
-
-        await FileIO.writeObject(metadata, Const.metadataPath)
-    }
-
-    static async updateTwitter<T>(
-        data: T,
-        dict: FileDictionary
-    ): Promise<void> {
-        await this.update("twitter", data, dict)
-    }
-
-    static async updatePixiv<T>(data: T, dict: FileDictionary): Promise<void> {
-        await this.update("pixiv", data, dict)
+        await this.rebuildTwitterIndex()
+        await this.rebuildPixivIndex()
     }
 
     static async getTweets<T>(): Promise<T | undefined> {
@@ -65,6 +33,25 @@ export default class Database {
 
     static async getPixivIndex(): Promise<CollectionIndex> {
         return await this.getCollectionIndex("pixiv")
+    }
+
+    static async updateTwitter<T>(
+        data: T,
+        dict: FileDictionary
+    ): Promise<void> {
+        await this.update("twitter", data, dict)
+    }
+
+    static async updatePixiv<T>(data: T, dict: FileDictionary): Promise<void> {
+        await this.update("pixiv", data, dict)
+    }
+
+    static async rebuildTwitterIndex(): Promise<void> {
+        await this.rebuildCollectionIndex("twitter")
+    }
+
+    static async rebuildPixivIndex(): Promise<void> {
+        await this.rebuildCollectionIndex("pixiv")
     }
 
     private static async update<T>(
@@ -157,23 +144,45 @@ export default class Database {
         }
     }
 
-    private static buildCollectionIndex(
+    private static async rebuildCollectionIndex(
+        type: "twitter" | "pixiv"
+    ): Promise<void> {
+        const metadata: Metadata = await FileIO.readObject(Const.metadataPath)
+        metadata[type].collectionIndex = this.lookupAndMergeCollectionIndex(
+            Const.twitterImageDirectory,
+            metadata.twitter.collectionIndex
+        )
+        console.log(
+            `${Util.toUpperLowerCase(type)}'s collection index is updated.`
+        )
+        await FileIO.writeObject(metadata, Const.metadataPath)
+    }
+
+    private static lookupAndMergeCollectionIndex(
         path: string,
         oldIndex: CollectionIndex
     ): CollectionIndex {
         const newIndex: CollectionIndex = {}
         // Look at files at this time
         FileIO.listFiles(path).forEach((filename) => {
-            newIndex[filename] = oldIndex[filename] ?? {
-                state: FileState.untraced,
-            }
+            if (!oldIndex[filename])
+                newIndex[filename] = { state: FileState.untraced }
+            else if (oldIndex[filename].state == FileState.notDownloaded)
+                newIndex[filename] = {
+                    state: FileState.traced,
+                    info: oldIndex[filename].info,
+                }
         })
         // Look at old index
         Object.keys(oldIndex).forEach((filename) => {
-            if (!newIndex[filename]) {
-                newIndex[filename] = oldIndex[filename]
-                newIndex[filename].state = FileState.notDownloaded
-            }
+            if (
+                !newIndex[filename] &&
+                oldIndex[filename].state == FileState.traced
+            )
+                newIndex[filename] = {
+                    state: FileState.notDownloaded,
+                    info: oldIndex[filename].info,
+                }
         })
         return newIndex
     }
