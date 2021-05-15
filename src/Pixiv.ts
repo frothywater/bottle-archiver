@@ -17,28 +17,31 @@ export default class Pixiv {
         const loginResult = await this.client.login()
         this.userID = parseInt(loginResult.user.id, 10)
 
-        this.updateToken()
+        await this.updateToken()
     }
 
     async updateFavorites(): Promise<void> {
         const illusts = await this.fetchBookmarks()
 
-        const oldIllusts: PixivIllust[] = Database.getPixiv() ?? []
+        const oldIllusts: PixivIllust[] = (await Database.getPixiv()) ?? []
 
         console.log(`Update Pixiv favorites:`)
         console.log(`${oldIllusts.length} before, ${illusts.length} from API,`)
 
         const mergedIllusts = Pixiv.mergeIllusts(oldIllusts, illusts)
-        Database.updatePixiv(mergedIllusts, Pixiv.parseIllusts(mergedIllusts))
+        await Database.updatePixiv(
+            mergedIllusts,
+            Pixiv.parseIllusts(mergedIllusts)
+        )
         console.log(`${mergedIllusts.length} in total now.`)
     }
 
-    private updateToken(): void {
+    private async updateToken(): Promise<void> {
         const newToken: typeof token = {
             accessToken: this.client.authToken,
             refreshToken: this.client.refreshToken,
         }
-        FileIO.writeObject(newToken, Const.pixivTokenPath)
+        await FileIO.writeObject(newToken, Const.pixivTokenPath)
     }
 
     private async fetchBookmarks(): Promise<PixivIllust[]> {

@@ -6,11 +6,11 @@ import { CollectionIndex, FileState, Metadata } from "./typing/Metadata"
 import Util from "./Util"
 
 export default class Database {
-    static initialize(): void {
+    static async init(): Promise<void> {
         let metadata: Metadata
 
         if (FileIO.existFile(Const.metadataPath))
-            metadata = FileIO.readObject(Const.metadataPath)
+            metadata = await FileIO.readObject(Const.metadataPath)
         else {
             console.log("Metadata doesn't exist, create empty metadata file.")
             metadata = {
@@ -37,47 +37,50 @@ export default class Database {
         )
         console.log("Pixiv's collection index is updated.")
 
-        FileIO.writeObject(metadata, Const.metadataPath)
+        await FileIO.writeObject(metadata, Const.metadataPath)
     }
 
-    static updateTwitter<T>(data: T, dict: FileDictionary): void {
-        this.update("twitter", data, dict)
+    static async updateTwitter<T>(
+        data: T,
+        dict: FileDictionary
+    ): Promise<void> {
+        await this.update("twitter", data, dict)
     }
 
-    static updatePixiv<T>(data: T, dict: FileDictionary): void {
-        this.update("pixiv", data, dict)
+    static async updatePixiv<T>(data: T, dict: FileDictionary): Promise<void> {
+        await this.update("pixiv", data, dict)
     }
 
-    static getTweets<T>(): T | undefined {
-        return this.getData<T>("twitter")
+    static async getTweets<T>(): Promise<T | undefined> {
+        return await this.getData<T>("twitter")
     }
 
-    static getPixiv<T>(): T | undefined {
-        return this.getData<T>("pixiv")
+    static async getPixiv<T>(): Promise<T | undefined> {
+        return await this.getData<T>("pixiv")
     }
 
-    static getTweetIndex(): CollectionIndex {
-        return this.getCollectionIndex("twitter")
+    static async getTweetIndex(): Promise<CollectionIndex> {
+        return await this.getCollectionIndex("twitter")
     }
 
-    static getPixivIndex(): CollectionIndex {
-        return this.getCollectionIndex("pixiv")
+    static async getPixivIndex(): Promise<CollectionIndex> {
+        return await this.getCollectionIndex("pixiv")
     }
 
-    private static update<T>(
+    private static async update<T>(
         type: "twitter" | "pixiv",
         data: T,
         dict: FileDictionary
-    ): void {
+    ): Promise<void> {
         const filePath = type == "twitter" ? Const.tweetsPath : Const.pixivPath
-        FileIO.writeObject(data, filePath)
+        await FileIO.writeObject(data, filePath)
 
-        const metadata = FileIO.readObject<Metadata>(Const.metadataPath)
+        const metadata = await FileIO.readObject<Metadata>(Const.metadataPath)
         metadata[type].lastRetrieved = { date: new Date() }
-        FileIO.writeObject(metadata, Const.metadataPath)
+        await FileIO.writeObject(metadata, Const.metadataPath)
         console.log(`${Util.toUpperLowerCase(type)}'s data file is updated.`)
 
-        const info = this.updateCollectionIndex(type, dict)
+        const info = await this.updateCollectionIndex(type, dict)
         console.log(
             `${Util.toUpperLowerCase(type)}'s collection index is updated:`
         )
@@ -89,25 +92,27 @@ export default class Database {
         )
     }
 
-    private static getData<T>(type: "twitter" | "pixiv"): T | undefined {
+    private static async getData<T>(
+        type: "twitter" | "pixiv"
+    ): Promise<T | undefined> {
         const filePath = type == "twitter" ? Const.tweetsPath : Const.pixivPath
         if (!filePath) return undefined
         if (!FileIO.existFile(filePath)) return undefined
-        return FileIO.readObject(filePath)
+        return await FileIO.readObject(filePath)
     }
 
-    private static getCollectionIndex(
+    private static async getCollectionIndex(
         type: "twitter" | "pixiv"
-    ): CollectionIndex {
-        const metadata = FileIO.readObject<Metadata>(Const.metadataPath)
+    ): Promise<CollectionIndex> {
+        const metadata = await FileIO.readObject<Metadata>(Const.metadataPath)
         return metadata[type].collectionIndex
     }
 
-    private static updateCollectionIndex(
+    private static async updateCollectionIndex(
         type: "twitter" | "pixiv",
         dict: FileDictionary
-    ): CollectionIndexInfo {
-        const metadata = FileIO.readObject<Metadata>(Const.metadataPath)
+    ): Promise<CollectionIndexInfo> {
+        const metadata = await FileIO.readObject<Metadata>(Const.metadataPath)
         const index = metadata[type].collectionIndex
 
         Object.keys(dict).forEach((filename) => {
@@ -123,7 +128,7 @@ export default class Database {
                 }
         })
 
-        FileIO.writeObject(metadata, Const.metadataPath)
+        await FileIO.writeObject(metadata, Const.metadataPath)
 
         // Collect numbers of files of each state
         let tracedCount = 0

@@ -4,8 +4,8 @@ import Const from "./Const"
 import FileIO from "./FileIO"
 
 export default class TwitterHarReader {
-    static update(): void {
-        const har: Har = FileIO.readObject(Const.twitterHarPath)
+    static async update(): Promise<void> {
+        const har: Har = await FileIO.readObject(Const.twitterHarPath)
         const tweetSet = new Set<string>()
         const result: any[] = []
         har.log.entries
@@ -22,7 +22,7 @@ export default class TwitterHarReader {
                     }
                 })
             })
-        FileIO.writeObject(result, Const.tweetsHarPath)
+        await FileIO.writeObject(result, Const.tweetsHarPath)
     }
 
     private static parseResponse(text: string): any[] {

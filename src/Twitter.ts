@@ -18,21 +18,26 @@ export default class Twitter {
     async updateFavorites(): Promise<void> {
         const tweets = await this.fetchFavorites()
 
-        const oldTweets: Tweet[] = Database.getTweets() ?? []
+        const oldTweets: Tweet[] = (await Database.getTweets()) ?? []
 
         console.log(`Update Twitter favorites:`)
         console.log(`${oldTweets.length} before, ${tweets.length} from API,`)
 
         const mergedTweets = Twitter.mergeTweets(oldTweets, tweets)
-        Database.updateTwitter(mergedTweets, Twitter.parseTweets(mergedTweets))
+        await Database.updateTwitter(
+            mergedTweets,
+            Twitter.parseTweets(mergedTweets)
+        )
         console.log(`${mergedTweets.length} in total now.`)
     }
 
     static async updateFavoritesFromHar(): Promise<void> {
         if (!FileIO.existFile(Const.tweetsHarPath)) return
-        const tweetsFromHar: Tweet[] = FileIO.readObject(Const.tweetsHarPath)
+        const tweetsFromHar: Tweet[] = await FileIO.readObject(
+            Const.tweetsHarPath
+        )
 
-        const tweets: Tweet[] = Database.getTweets() ?? []
+        const tweets: Tweet[] = (await Database.getTweets()) ?? []
 
         console.log(`Update Twitter favorites from HAR file:`)
         console.log(
@@ -41,7 +46,10 @@ export default class Twitter {
 
         const mergedTweets = this.mergeTweets(tweets, tweetsFromHar)
 
-        Database.updateTwitter(mergedTweets, this.parseTweets(mergedTweets))
+        await Database.updateTwitter(
+            mergedTweets,
+            this.parseTweets(mergedTweets)
+        )
         console.log(`${mergedTweets.length} in total after merged.`)
     }
 

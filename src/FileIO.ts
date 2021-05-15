@@ -1,12 +1,12 @@
 import fs from "fs"
 
 export default class FileIO {
-    static writeObject<T>(object: T, path: string): void {
-        fs.writeFileSync(path, JSON.stringify(object, null, 2))
+    static async writeObject<T>(object: T, path: string): Promise<void> {
+        await fs.promises.writeFile(path, JSON.stringify(object, null, 2))
     }
 
-    static readObject<T>(path: string): T {
-        return JSON.parse(fs.readFileSync(path).toString())
+    static async readObject<T>(path: string): Promise<T> {
+        return JSON.parse((await fs.promises.readFile(path)).toString())
     }
 
     static listFiles(path: string): string[] {

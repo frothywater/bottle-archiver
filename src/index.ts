@@ -5,7 +5,7 @@ import Pixiv from "./Pixiv"
 
 async function main() {
     Network.useProxy()
-    Database.initialize()
+    await Database.init()
     const pixiv = new Pixiv()
     await pixiv.init()
     await pixiv.updateFavorites()
