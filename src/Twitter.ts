@@ -46,13 +46,13 @@ export default class Twitter {
     }
 
     private async fetchFavorites(): Promise<Tweet[]> {
-        let result: Tweet[] = []
+        const result: Tweet[] = []
 
         let maxID: bigint | undefined
         let partialResult: Tweet[]
         do {
             partialResult = await this.fetchFavoritesOnce(maxID)
-            result = result.concat(partialResult)
+            result.push(...partialResult)
             const last = partialResult[partialResult.length - 1]
             if (last) maxID = BigInt(last.id_str) - 1n
         } while (partialResult.length > 0)

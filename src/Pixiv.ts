@@ -40,7 +40,7 @@ export default class Pixiv {
     ): Promise<PixivIllust[]> {
         if (!this.userID) throw console.error("Pixiv didn't login!")
 
-        let result: PixivIllust[] = []
+        const result: PixivIllust[] = []
         let search: PixivIllustSearch | undefined
         do {
             console.log(`Pixiv: Fetching ${restrict} bookmarks`)
@@ -50,7 +50,7 @@ export default class Pixiv {
                     restrict,
                 })
             else search = (await this.client.next()) as PixivIllustSearch
-            result = result.concat(search.illusts)
+            result.push(...search.illusts)
 
             const last = search.illusts[search.illusts.length - 1]
             console.log(
