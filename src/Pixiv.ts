@@ -1,5 +1,5 @@
 import PixivAppApi from "pixiv-app-api"
-import { PixivIllust } from "pixiv-app-api/dist/PixivTypes"
+import { PixivIllust, PixivIllustSearch } from "pixiv-app-api/dist/PixivTypes"
 import token from "../secret/pixiv_token.json"
 import Database from "./Database"
 import { FileDictionary } from "./typing/FileDictionary"
@@ -11,8 +11,9 @@ export default class Pixiv {
     userID?: number
 
     async init(): Promise<void> {
-        this.client.authToken = token.accessToken
         this.client.refreshToken = token.refreshToken
+        const loginResult = await this.client.login()
+        this.userID = parseInt(loginResult.user.id, 10)
     }
 
     async updateFavorites(): Promise<void> {
@@ -29,9 +30,9 @@ export default class Pixiv {
     }
 
     private async fetchBookmarks(): Promise<PixivIllust[]> {
-        return (await this.fetchBookmarksWithRestrict("private")).concat(
-            await this.fetchBookmarksWithRestrict("public")
-        )
+        const privateResult = await this.fetchBookmarksWithRestrict("private")
+        const publicResult = await this.fetchBookmarksWithRestrict("public")
+        return privateResult.concat(publicResult)
     }
 
     private async fetchBookmarksWithRestrict(
@@ -40,12 +41,15 @@ export default class Pixiv {
         if (!this.userID) throw console.error("Pixiv didn't login!")
 
         let result: PixivIllust[] = []
+        let search: PixivIllustSearch | undefined
         do {
-            console.log(`Pixiv: Fetching bookmarks`)
+            console.log(`Pixiv: Fetching ${restrict} bookmarks`)
 
-            const search = await this.client.userBookmarksIllust(this.userID, {
-                restrict,
-            })
+            if (!search)
+                search = await this.client.userBookmarksIllust(this.userID, {
+                    restrict,
+                })
+            else search = (await this.client.next()) as PixivIllustSearch
             result = result.concat(search.illusts)
 
             const last = search.illusts[search.illusts.length - 1]
@@ -60,10 +64,13 @@ export default class Pixiv {
         const result: FileDictionary = {}
 
         illusts.forEach((illust) => {
-            const singleUrl = illust.metaSinglePage.originalImageUrl
-            const urls = singleUrl
-                ? [singleUrl]
-                : illust.metaPages.map((page) => page.imageUrls.original)
+            const urls: string[] = []
+            if (illust.metaSinglePage?.originalImageUrl)
+                urls.push(illust.metaSinglePage.originalImageUrl)
+            if (illust.metaPages)
+                urls.push(
+                    ...illust.metaPages.map((page) => page.imageUrls.original)
+                )
             urls.forEach((url) => {
                 const filename = url.split("/").pop()
                 if (filename)
