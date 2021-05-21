@@ -68,7 +68,7 @@ export default class Pixiv {
     }
 
     private async updateToken(): Promise<void> {
-        const newToken: typeof token = {
+        const newToken = {
             accessToken: this.client.authToken,
             refreshToken: this.client.refreshToken,
         }
