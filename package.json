@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "description": "",
   "main": "lib/index.js",
-  "scripts": {},
+  "scripts": {
+    "start": "ts-node src/index.ts"
+  },
   "keywords": [],
   "author": "frothywater",
   "license": "ISC",
