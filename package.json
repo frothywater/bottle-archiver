@@ -4,7 +4,7 @@
   "description": "",
   "main": "lib/index.js",
   "scripts": {
-    "start": "ts-node src/index.ts"
+    "start": "ts-node test/index.ts"
   },
   "keywords": [],
   "author": "frothywater",
