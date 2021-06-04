@@ -3,6 +3,7 @@ import { PixivIllust } from "pixiv-app-api/dist/PixivTypes"
 export interface Tweet {
     id_str: string
     created_at: string
+    favorited: boolean
     extended_entities?: {
         media?: TwitterMedia[]
     }

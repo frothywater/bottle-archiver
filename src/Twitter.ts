@@ -1,4 +1,5 @@
 import path from "path"
+import queue from "queue"
 import TwitterClient from "twitter"
 import token from "../secret/twitter_token.json"
 import Const from "./Const"
@@ -32,6 +33,28 @@ export default class Twitter {
             Twitter.parseTweets(mergedTweets)
         )
         console.log(`${mergedTweets.length} in total now.`)
+    }
+
+    async postUnlikedTweets(): Promise<void> {
+        const unliked = await Twitter.getUnlikedTweets()
+
+        const worker = (tweet: Tweet) => async () => {
+            try {
+                await this.postLike(tweet)
+                console.log(`Posted Like: ${tweet.id_str}`)
+            } catch (error) {
+                console.log(`Failed Like: ${tweet.id_str}, ${error}`)
+            }
+        }
+
+        return new Promise((resolve, _) => {
+            const q = queue({
+                concurrency: 8,
+                autostart: true,
+            })
+            q.push(...unliked.slice(0, 500).map((tweet) => worker(tweet)))
+            q.once("end", () => resolve())
+        })
     }
 
     static async updateFavoritesFromHar(): Promise<void> {
@@ -121,6 +144,15 @@ export default class Twitter {
         )
 
         return result
+    }
+
+    private static async getUnlikedTweets(): Promise<Tweet[]> {
+        const tweets: Tweet[] = (await Database.getTweets()) ?? []
+        return tweets.filter((tweet) => tweet.favorited == false)
+    }
+
+    private async postLike(tweet: Tweet): Promise<void> {
+        await this.client.post("favorites/create", { id: tweet.id_str })
     }
 
     private static mergeTweets(tweetsA: Tweet[], tweetsB: Tweet[]): Tweet[] {
