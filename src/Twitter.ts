@@ -1,5 +1,4 @@
 import path from "path"
-import queue from "queue"
 import TwitterClient from "twitter"
 import token from "../secret/twitter_token.json"
 import Const from "./Const"
@@ -43,18 +42,15 @@ export default class Twitter {
                 await this.postLike(tweet)
                 console.log(`Posted Like: ${tweet.id_str}`)
             } catch (error) {
-                console.log(`Failed Like: ${tweet.id_str}, ${error}`)
+                console.log(
+                    `Failed Like: ${tweet.id_str}, ${Util.errorString(error)}`
+                )
             }
         }
 
-        return new Promise((resolve, _) => {
-            const q = queue({
-                concurrency: 8,
-                autostart: true,
-            })
-            q.push(...unliked.slice(0, 500).map((tweet) => worker(tweet)))
-            q.once("end", () => resolve())
-        })
+        await Util.concurrentlyRun(
+            unliked.slice(0, 500).map((tweet) => worker(tweet))
+        )
     }
 
     static async updateFavoritesFromHar(): Promise<void> {
