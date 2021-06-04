@@ -152,17 +152,11 @@ export default class Twitter {
     }
 
     private static mergeTweets(tweetsA: Tweet[], tweetsB: Tweet[]): Tweet[] {
-        const result: Tweet[] = tweetsA
-        const tweetSet = new Set<string>()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        tweetsA.forEach((tweet: any) => tweetSet.add(tweet.id_str))
-        tweetsB.forEach((tweet) => {
-            if (!tweetSet.has(tweet.id_str)) {
-                tweetSet.add(tweet.id_str)
-                result.push(tweet)
-            }
-        })
-        return result
+        // Assume that B is newer than A
+        const dict: { [id: string]: Tweet } = {}
+        tweetsA.forEach((tweet) => (dict[tweet.id_str] = tweet))
+        tweetsB.forEach((tweet) => (dict[tweet.id_str] = tweet))
+        return Object.values(dict)
     }
 
     private static parseTweets(tweets: Tweet[]): FileDictionary {
