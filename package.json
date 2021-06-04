@@ -4,7 +4,8 @@
   "description": "",
   "main": "lib/index.js",
   "scripts": {
-    "start": "ts-node test/index.ts"
+    "start": "ts-node test/index.ts",
+    "backup": "cp data/* backup"
   },
   "keywords": [],
   "author": "frothywater",
