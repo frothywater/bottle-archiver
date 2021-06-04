@@ -9,6 +9,7 @@ import FileIO from "./FileIO"
 import { Illust } from "./typing/BasicType"
 import { FileDictionary } from "./typing/FileDictionary"
 import { FileState } from "./typing/Metadata"
+import { PixivTagStat } from "./typing/PixivTagStat"
 import Util from "./Util"
 
 export default class Pixiv {
@@ -39,6 +40,11 @@ export default class Pixiv {
             Pixiv.parseIllusts(mergedIllusts)
         )
         console.log(`${mergedIllusts.length} in total now.`)
+    }
+
+    static async performStat(): Promise<void> {
+        const stat = await Pixiv.getTagStat()
+        FileIO.writeObject(stat, Const.pixivStatPath)
     }
 
     static async updateCollectionIndexFromData(): Promise<void> {
@@ -104,6 +110,30 @@ export default class Pixiv {
             )
         } while (this.client.hasNext())
         return result
+    }
+
+    private async addBookmark(id: number, restrict = false): Promise<void> {
+        await this.client.illustBookmarkAdd(id, {
+            restrict: restrict ? "private" : "public",
+        })
+    }
+
+    private async deleteBookmark(id: number): Promise<void> {
+        await this.client.illustBookmarkDelete(id)
+    }
+
+    private static async getTagStat(): Promise<PixivTagStat> {
+        const illust: Illust[] = (await Database.getPixiv()) ?? []
+        const tagDict: { [name: string]: number } = {}
+        illust.forEach((illust) => {
+            illust.tags.forEach((tag) => {
+                if (!tagDict[tag.name]) tagDict[tag.name] = 0
+                tagDict[tag.name]++
+            })
+        })
+        return Object.entries(tagDict)
+            .map((entry) => ({ name: entry[0], count: entry[1] }))
+            .sort((a, b) => b.count - a.count)
     }
 
     private static parseIllusts(illusts: Illust[]): FileDictionary {

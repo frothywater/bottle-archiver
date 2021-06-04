@@ -12,6 +12,7 @@ const twitterImageDirectory = path.join(imageDirectory, "twitter")
 const pixivImageDirectory = path.join(imageDirectory, "pixiv")
 const twitterHarPath = path.join(inputDirectory, "twitter.com.har")
 const pixivTokenPath = path.join(secretDirectory, "pixiv_token.json")
+const pixivStatPath = path.join(dataDirectory, "pixiv_stat.json")
 
 export default {
     dataDirectory,
@@ -25,4 +26,5 @@ export default {
     twitterHarPath,
     tweetsHarPath,
     pixivTokenPath,
+    pixivStatPath,
 }
