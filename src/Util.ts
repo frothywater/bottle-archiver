@@ -26,7 +26,15 @@ export default class Util {
         })
     }
 
-    static errorString(err: string | Record<string, unknown>): string {
-        return typeof err == "string" ? err : JSON.stringify(err)
+    static errorString(error: Error): string {
+        return error.message || JSON.stringify(error, null, 2)
+    }
+
+    static async delay(milliseconds: number): Promise<void> {
+        return new Promise((resolve, _) => {
+            setTimeout(() => {
+                resolve()
+            }, milliseconds)
+        })
     }
 }

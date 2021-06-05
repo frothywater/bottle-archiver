@@ -45,6 +45,8 @@ export default class Twitter {
                 console.log(
                     `Failed Like: ${tweet.id_str}, ${Util.errorString(error)}`
                 )
+            } finally {
+                await Util.delay(3000)
             }
         }
 
