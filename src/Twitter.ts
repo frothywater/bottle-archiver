@@ -34,24 +34,25 @@ export default class Twitter {
         console.log(`${mergedTweets.length} in total now.`)
     }
 
-    async postUnlikedTweets(): Promise<void> {
+    async likeUnlikedTweets(): Promise<void> {
         const unliked = await Twitter.getUnlikedTweets()
 
         const worker = (tweet: Tweet) => async () => {
             try {
-                await this.postLike(tweet)
+                await this.likeTweet(tweet)
                 console.log(`Posted Like: ${tweet.id_str}`)
             } catch (error) {
                 console.log(
                     `Failed Like: ${tweet.id_str}, ${Util.errorString(error)}`
                 )
             } finally {
-                await Util.delay(3000)
+                await Util.delay(500)
             }
         }
 
         await Util.concurrentlyRun(
-            unliked.slice(0, 500).map((tweet) => worker(tweet))
+            unliked.slice(0, 500).map((tweet) => worker(tweet)),
+            1
         )
     }
 
@@ -149,8 +150,12 @@ export default class Twitter {
         return tweets.filter((tweet) => tweet.favorited == false)
     }
 
-    private async postLike(tweet: Tweet): Promise<void> {
+    private async likeTweet(tweet: Tweet): Promise<void> {
         await this.client.post("favorites/create", { id: tweet.id_str })
+    }
+
+    private async unlikeTweet(tweet: Tweet): Promise<void> {
+        await this.client.post("favorites/destroy", { id: tweet.id_str })
     }
 
     private static mergeTweets(tweetsA: Tweet[], tweetsB: Tweet[]): Tweet[] {
